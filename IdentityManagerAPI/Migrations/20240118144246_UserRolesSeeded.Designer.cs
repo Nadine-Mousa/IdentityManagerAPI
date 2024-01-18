@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IdentityManagerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240118094248_SeedUserRoles")]
-    partial class SeedUserRoles
+    [Migration("20240118144246_UserRolesSeeded")]
+    partial class UserRolesSeeded
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -54,18 +54,24 @@ namespace IdentityManagerAPI.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "5ba1bace-5f33-4727-84db-6fb67d89b532",
-                            Name = "Admin"
+                            Id = "e109d72d-a8ff-400e-a794-0bd94dc39351",
+                            ConcurrencyStamp = "1",
+                            Name = "Admin",
+                            NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "12adaae2-195e-4297-ac00-35104bc4600d",
-                            Name = "HR"
+                            Id = "fbe37e9b-294a-4350-a86f-163e5d223171",
+                            ConcurrencyStamp = "2",
+                            Name = "User",
+                            NormalizedName = "USER"
                         },
                         new
                         {
-                            Id = "8800e310-0b9f-4bd4-9dcc-acbf65af76e5",
-                            Name = "User"
+                            Id = "17825746-f146-4edc-a220-0885085cbf62",
+                            ConcurrencyStamp = "3",
+                            Name = "HR",
+                            NormalizedName = "HR"
                         });
                 });
 

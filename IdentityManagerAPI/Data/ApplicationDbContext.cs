@@ -19,10 +19,11 @@ namespace IdentityManagerAPI.Data
         }
         private void SeedRoles(ModelBuilder builder)
         {
-               builder.Entity<IdentityRole>().HasData(
-                   new IdentityRole(SD.Role_Admin),
-                   new IdentityRole(SD.Role_HR),
-                   new IdentityRole(SD.Role_User));
+            builder.Entity<IdentityRole>().HasData(
+                new IdentityRole { Name = SD.Role_Admin, ConcurrencyStamp = "1", NormalizedName = "ADMIN" },
+                new IdentityRole { Name = SD.Role_User, ConcurrencyStamp = "2", NormalizedName = "USER" },
+                new IdentityRole { Name = SD.Role_HR, ConcurrencyStamp = "3", NormalizedName = "HR" });
+                   
         }
     }
 }

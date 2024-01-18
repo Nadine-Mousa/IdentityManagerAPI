@@ -13,11 +13,11 @@ namespace IdentityManagerAPI.Controllers
     public class AuthenticationController : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager;
-        public AuthenticationController(UserManager<IdentityUser> userManager)
+        private readonly RoleManager<IdentityRole> _roleManager;
+        public AuthenticationController(UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
         {
-
             _userManager = userManager;
-
+            _roleManager = roleManager;
         }
 
         [HttpPost("/Register")]
@@ -38,37 +38,34 @@ namespace IdentityManagerAPI.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new Response("Error", "User already exists"));
             }
 
-            // Add user to db
-            var identity_user = new IdentityUser
+            // Add role to user 
+            var role_exists = await _roleManager.RoleExistsAsync(role);
+            if (role_exists == true)
             {
-                Email = user.Email,
-                UserName = user.Username,
-                SecurityStamp = Guid.NewGuid().ToString(),
-            };
-            var result = await _userManager.CreateAsync(identity_user, user.Password);
-            if(result.Succeeded)
-            {
-                return StatusCode(StatusCodes.Status201Created, new Response("Success", "User Created Successfully."));
+                // Add user to db
+                var identity_user = new IdentityUser
+                {
+                    Email = user.Email,
+                    UserName = user.Username,
+                    SecurityStamp = Guid.NewGuid().ToString(),
+                };
+
+                var result = await _userManager.CreateAsync(identity_user, user.Password);
+
+
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(identity_user, role);
+                    return StatusCode(StatusCodes.Status201Created, new Response("Success", "User Created Successfully."));
+                }
+                else
+                {
+                    return StatusCode(StatusCodes.Status400BadRequest, new Response("Error", "User failed to create"));
+                }
+
             }
-            else
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "User Failed to Create"));
-
-            }
-
-            //// Add role to user 
-            //if(SD.roles.Contains(role))
-            //{
-            //    result = await _userManager.AddToRoleAsync(identity_user, role);
-            //    if (result.Succeeded)
-            //    {
-            //        return StatusCode(StatusCodes.Status201Created, new Response("Success", "Role " + role + " assigned to user"));
-            //    }
-                
-
-
-            //}
-            //return StatusCode(StatusCodes.Status400BadRequest, new Response("Error", "Error happened while assigning the role to the user"));
+            else  return StatusCode(StatusCodes.Status500InternalServerError, new Response("Error", "Role name doesn't exist"));
+            
         }
 
         [HttpGet]
