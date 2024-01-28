@@ -7,7 +7,5 @@
         public const string Role_HR = "HR";
         public static List<string> roles = new List<string> { Role_Admin, Role_User, Role_HR};
 
-
-
     }
 }

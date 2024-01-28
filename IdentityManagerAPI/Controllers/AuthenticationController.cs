@@ -2,9 +2,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using IdentityManagerAPI.Models.Authentication;
-using System.Net.Mail;
 using Microsoft.EntityFrameworkCore;
 using IdentityManagerAPI.Models;
+using MimeKit;
+using MailKit.Net.Smtp;
+using User.Services.Management.EmailService.Models;
+using MimeKit.Text;
+
 
 namespace IdentityManagerAPI.Controllers
 {
@@ -14,10 +18,14 @@ namespace IdentityManagerAPI.Controllers
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        public AuthenticationController(UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
+        private readonly EmailConfiguration _emailConfiguration;
+        public AuthenticationController(
+            UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, EmailConfiguration emailConfiguration)
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _emailConfiguration = emailConfiguration;
+
         }
 
         [HttpPost("/Register")]
@@ -27,7 +35,7 @@ namespace IdentityManagerAPI.Controllers
             // Assign Username if not found
             if(user.Username == string.Empty || user.Username == null)
             {
-                user.Username = new MailAddress(user.Email).User;
+                user.Username = new System.Net.Mail.MailAddress(user.Email).User;
             }
 
             // Check if the user already exists
@@ -56,7 +64,19 @@ namespace IdentityManagerAPI.Controllers
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(identity_user, role);
-                    return StatusCode(StatusCodes.Status201Created, new Response("Success", "User Created Successfully."));
+
+                    //Add Token to Verify the email....
+                    var token = await _userManager.GenerateEmailConfirmationTokenAsync(identity_user);
+                    var confirmationLink = Url.Action(nameof(ConfirmEmail), "Authentication", new { token, email = user.Email }, Request.Scheme);
+                    var message = new Message(new string[] { user.Email! }, "Confirmation email link", confirmationLink!);
+
+
+                    // send email confirmation message
+                    await SendConfirmationEmail(user.Email, message);
+
+
+
+                    return StatusCode(StatusCodes.Status201Created, new Response("Success", $"User created & Email Sent to {user.Email} SuccessFully"));
                 }
                 else
                 {
@@ -68,11 +88,56 @@ namespace IdentityManagerAPI.Controllers
             
         }
 
-        [HttpGet]
-        public void singin()
+        [HttpGet("/SendConfirmationEmail")]
+        public async Task<IActionResult> SendConfirmationEmail(string email, Message msg)
         {
-            // sing in by email or password
+            var message = new MimeMessage();
+            message.Subject = "Email Configuration";
+            message.From.Add(MailboxAddress.Parse(_emailConfiguration.From));
+            message.To.Add(MailboxAddress.Parse(email));
+            message.Body = new TextPart(TextFormat.Html) { Text = $"Please Confirm your account by clicking here {msg.Content}" };
+
+            using var client = new SmtpClient();
+            try
+            {
+                client.Connect(_emailConfiguration.SmtpServer, _emailConfiguration.Port, true);
+                client.AuthenticationMechanisms.Remove("XOAUTH2");
+                client.Authenticate(_emailConfiguration.Username, _emailConfiguration.Password);
+
+                client.Send(message);
+            }
+            catch
+            {
+                //log an error message or throw an exception or both.
+                throw;
+            }
+            finally
+            {
+                client.Disconnect(true);
+                client.Dispose();
+            }
+
+            return StatusCode(StatusCodes.Status200OK, new Response("Success", "Verification email sent"));
         }
+
+        [HttpGet("ConfirmEmail")]
+        public async Task<IActionResult> ConfirmEmail(string token, string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user != null)
+            {
+                var result = await _userManager.ConfirmEmailAsync(user, token);
+                if (result.Succeeded)
+                {
+                    return StatusCode(StatusCodes.Status200OK,
+                      new Response { Status = "Success", Message = "Email Verified Successfully" });
+                }
+            }
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                       new Response { Status = "Error", Message = "This User Does not exist!" });
+        }
+
+
 
     }
 }
